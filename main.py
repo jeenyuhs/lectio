@@ -13,11 +13,13 @@ from config import config
 
 
 async def main() -> None:
-
     user = await Lectio.login(
         config["brugernavn"], config["kodeord"], config["skolekode"]
     )
-    await user.schedule()
+    schedule = await user.schedule()
+    print(schedule.get("friday"))
+
+    absence = await user.absence()
     await user.session.close()
 
 
