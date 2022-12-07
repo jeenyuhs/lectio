@@ -1,9 +1,11 @@
+from datetime import datetime
+import pprint
 import re
 
 import aiohttp
 from bs4 import BeautifulSoup
 
-import constants
+from lectio.absence import Absence
 from lectio.schedule import Schedule
 from lectio.user import User
 
@@ -12,6 +14,7 @@ class Lectio:
     def __init__(self):
         self.session = aiohttp.ClientSession()
         self.user: User
+        self._prev_url: str = ""
 
     @property
     def url(self):
@@ -64,7 +67,7 @@ class Lectio:
             exit(1)
 
         c.user.avatar_url = (
-            constants.BASE_URL
+            "https://www.lectio.dk/lectio/"
             + response_soup.find(id="s_m_HeaderContent_picctrlthumbimage")["src"][  # type: ignore
                 8:
             ]
@@ -73,21 +76,46 @@ class Lectio:
 
         return c
 
+    async def _request_to_soup(self, request_url: str) -> BeautifulSoup:
+        response = await self.session.get(request_url)
+        content = await response.text()
+        return BeautifulSoup(content, features="html5lib")
+
     def _get_value_from_id(self, soup: BeautifulSoup, id: str) -> str:
         return soup.find(id=id)["value"]  # type: ignore
 
-    async def schedule(self, week: int = -1) -> Schedule:
-        _resp = await self.session.get(
-            self.url + f"/SkemaNy.aspx?type=elev&elevid={self.user.student_id}"
-        )
-        _content = await _resp.text()
-        soup = BeautifulSoup(_content, features="html5lib")
-        s = Schedule()
+    async def schedule(self, _week: int = 0) -> Schedule:
+        if not _week:
+            week = datetime.now().strftime("%W%Y")
+        else:
+            week = f"{_week}{datetime.now().strftime('%Y')}"
+
+        request_url = f"{self.url}/SkemaNy.aspx?type=elev&elevid={self.user.student_id}&week={week}"
+        soup = await self._request_to_soup(request_url)
+        schedule = Schedule()
         pieces = soup.find(
             "table", id="s_m_Content_Content_SkemaNyMedNavigation_skema_skematabel"
         ).findAll("a", attrs={"class": "s2brik"})
 
         for piece in pieces:
-            s.parse_lesson(piece)
+            schedule.parse_lesson(piece)
 
-        return s
+        self._prev_url = request_url[: len(self.url) - 1]
+        return schedule
+
+    async def absence(self) -> Absence:
+        request_url = f"{self.url}/subnav/fravaerelev.aspx?elevid={self.user.student_id}&prevurl={self._prev_url}"
+        soup = await self._request_to_soup(request_url)
+        teams = soup.find(
+            "table", id="s_m_Content_Content_SFTabStudentAbsenceDataTable"
+        ).findAll("tr")
+
+        absence = Absence()
+
+        for team in teams[
+            3:
+        ]:  # the first 3 items, are just headers for the table on lectio.
+            absence.parse(team)
+
+        self._prev_url = request_url
+        return absence

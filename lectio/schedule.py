@@ -19,7 +19,7 @@ class Lesson:
             f"{self.team} {self.lesson_name} "
             f"({', '.join(self.teachers) if type(self.teachers) == list else self.teachers})"
             " | "
-            f"{self.start_time.strftime('%H:%M')} - {self.end_time.strftime('%H:%M')}"
+            f"{self.start_time.strftime('%d/%m-%Y %H:%M')} - {self.end_time.strftime('%d/%m-%Y %H:%M')}"
         )
 
 
@@ -94,5 +94,16 @@ class Schedule:
                 lesson.notes = p
                 continue
 
-        print(lesson)
         self.lessons.append(lesson)
+
+    # get the schedule for the requested day
+    def get(self, day: str) -> list[Lesson]:
+        lessons = []
+
+        for lesson in self.lessons:
+            date_time = lesson.start_time.strftime("%A").lower()
+
+            if date_time == day.lower():
+                lessons.append(lesson)
+
+        return lessons
