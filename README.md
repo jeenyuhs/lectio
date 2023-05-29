@@ -1,6 +1,2 @@
-# lectio
-dansk skole ting ting
-
-# opnået
-- skema
-- fravær ialt
+# Lectio-API
+Lectio lavet om til en API.

@@ -64,7 +64,7 @@ class Schedule:
                 )
                 continue
 
-            if (teachers := d.startswith("Lærere")) or d.startswith("Lærer"):
+            if d.startswith("Lærere") or d.startswith("Lærer"):
                 teachers = d.split(": ")
                 lesson.teachers = teachers[1].split(", ") if teachers else teachers[1]
                 continue
@@ -93,6 +93,8 @@ class Schedule:
                 p = next(d_iter)
                 lesson.notes = p
                 continue
+
+            # parse homework
 
         self.lessons.append(lesson)
 
